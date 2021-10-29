@@ -41,7 +41,7 @@
 struct trusted_list ***perm_trust_table = 0;    /* Pointer to current hash table pointer */
 struct trusted_list **perm_trust_table_1 = 0;   /* Pointer to hash table 1 */
 struct trusted_list **perm_trust_table_2 = 0;   /* Pointer to hash table 2 */
-
+gen_lock_t* perm_trust_hash_lock = 0;
 
 static db1_con_t* perm_db_handle = 0;
 static db_func_t perm_dbf;
@@ -161,7 +161,9 @@ int reload_trusted_table(void)
 	perm_dbf.free_result(perm_db_handle, res);
 
 	old_hash_table = *perm_trust_table;
+	lock_get(perm_trust_hash_lock);
 	*perm_trust_table = new_hash_table;
+	lock_release(perm_trust_hash_lock);
 	empty_hash_table(old_hash_table);
 
 	LM_DBG("trusted table reloaded successfully.\n");
@@ -221,6 +223,11 @@ int init_trusted(void)
 		if (!perm_trust_table) goto error;
 
 		*perm_trust_table = perm_trust_table_1;
+		if(lock_init(perm_trust_hash_lock) == 0) {
+			lock_dealloc(perm_trust_hash_lock);
+			perm_trust_hash_lock = 0;
+			goto error;
+		}
 
 		if (reload_trusted_table() == -1) {
 			LM_CRIT("reload of trusted table failed\n");
@@ -290,7 +297,9 @@ void clean_trusted(void)
 {
 	if (perm_trust_table_1) free_hash_table(perm_trust_table_1);
 	if (perm_trust_table_2) free_hash_table(perm_trust_table_2);
+	lock_get(perm_trust_hash_lock);
 	if (perm_trust_table) shm_free(perm_trust_table);
+	lock_release(perm_trust_hash_lock);
 }
 
 
@@ -498,7 +507,10 @@ int allow_trusted(struct sip_msg* msg, char *src_ip, int proto, char *from_uri)
 		perm_dbf.free_result(perm_db_handle, res);
 		return result;
 	} else {
-		return match_hash_table(*perm_trust_table, msg, src_ip, proto, from_uri);
+		lock_get(perm_trust_hash_lock);
+		result = match_hash_table(*perm_trust_table, msg, src_ip, proto, from_uri);
+		lock_release(perm_trust_hash_lock);
+		return result;
 	}
 }
 

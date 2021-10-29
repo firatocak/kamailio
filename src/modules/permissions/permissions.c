@@ -702,6 +702,12 @@ static void mod_exit(void)
 	clean_trusted();
 
 	clean_addresses();
+
+	if(perm_trust_hash_lock) {
+		lock_destroy(perm_trust_hash_lock);
+		lock_dealloc(perm_trust_hash_lock);
+		perm_trust_hash_lock = 0;
+	}
 }
 
 

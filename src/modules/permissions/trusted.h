@@ -24,12 +24,12 @@
 #define TRUSTED_H
 
 #include "../../core/parser/msg_parser.h"
-
+#include "../../core/locking.h"
 
 extern struct trusted_list ***perm_trust_table;    /* Pointer to current trusted hash table pointer */
 extern struct trusted_list **perm_trust_table_1;   /* Pointer to trusted hash table 1 */
 extern struct trusted_list **perm_trust_table_2;   /* Pointer to trusted hash table 2 */
-
+extern gen_lock_t* perm_trust_hash_lock;
 
 /*
  * Initialize data structures
